@@ -5,6 +5,14 @@
   "author": {
     "name": "Exousia"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JohnPaulQuintana/NAVIACCESS.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JohnPaulQuintana/NAVIACCESS/issues"
+  },
+  "homepage": "https://github.com/JohnPaulQuintana/NAVIACCESS#readme",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
