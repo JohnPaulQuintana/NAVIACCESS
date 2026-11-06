@@ -1,17 +1,29 @@
+
 import type { Request, Response, NextFunction } from "express";
 
-import type { InMemoryChallengeStore } from "../core/challenge-store.js";
+import type { ChallengeStore } from "../core/challenge-store.js";
 import { verifyAccess } from "../core/access-verifier.js";
 
 export interface NaviAccessExpressOptions {
   keyword: string;
-  challengeStore: InMemoryChallengeStore;
+  challengeStore: ChallengeStore;
 
+  /**
+   * Resolves the trusted public key for the requesting client.
+   * Never retrieve this key from an untrusted request header or body.
+   */
   getPublicKey: (request: Request) => string | Promise<string>;
 
+  /**
+   * Extracts the exact body string used by the client when signing.
+   * Prefer the raw HTTP request body over JSON.stringify(request.body).
+   */
   getBody: (request: Request) => string;
 }
 
+/**
+ * Express middleware for NaviAccess request verification.
+ */
 export function naviAccess(options: NaviAccessExpressOptions) {
   return async (
     request: Request,
@@ -32,7 +44,6 @@ export function naviAccess(options: NaviAccessExpressOptions) {
       }
 
       const publicKey = await options.getPublicKey(request);
-      const body = options.getBody(request);
 
       if (!publicKey) {
         response.status(401).json({
@@ -41,7 +52,16 @@ export function naviAccess(options: NaviAccessExpressOptions) {
         return;
       }
 
-      const result = verifyAccess({
+      const body = options.getBody(request);
+
+      if (typeof body !== "string") {
+        response.status(400).json({
+          message: "Unable to retrieve the original request body.",
+        });
+        return;
+      }
+
+      const result = await verifyAccess({
         method: request.method,
         path: request.originalUrl,
         body,

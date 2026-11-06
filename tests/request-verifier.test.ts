@@ -97,4 +97,139 @@ describe("NaviAccess Request Verifier", () => {
 
     expect(result.valid).toBe(false);
   });
+
+  it("should reject a modified HTTP method", () => {
+    const keys = generateKeyPair();
+
+    const request = {
+      method: "POST",
+      path: "/api/withdrawals",
+      body: "{}",
+      challengeId: "challenge-123",
+      nonce: "nonce-123",
+      representation: "naviaaccess123",
+    };
+
+    const signed = signRequest({
+      ...request,
+      privateKey: keys.privateKey,
+    });
+
+    const result = verifyRequest({
+      ...request,
+      method: "DELETE",
+      signature: signed.signature,
+      publicKey: keys.publicKey,
+    });
+
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject a modified request path", () => {
+    const keys = generateKeyPair();
+
+    const request = {
+      method: "POST",
+      path: "/api/withdrawals",
+      body: "{}",
+      challengeId: "challenge-123",
+      nonce: "nonce-123",
+      representation: "naviaaccess123",
+    };
+
+    const signed = signRequest({
+      ...request,
+      privateKey: keys.privateKey,
+    });
+
+    const result = verifyRequest({
+      ...request,
+      path: "/api/admin",
+      signature: signed.signature,
+      publicKey: keys.publicKey,
+    });
+
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject a modified challenge ID", () => {
+    const keys = generateKeyPair();
+
+    const request = {
+      method: "POST",
+      path: "/api/withdrawals",
+      body: "{}",
+      challengeId: "challenge-123",
+      nonce: "nonce-123",
+      representation: "naviaaccess123",
+    };
+
+    const signed = signRequest({
+      ...request,
+      privateKey: keys.privateKey,
+    });
+
+    const result = verifyRequest({
+      ...request,
+      challengeId: "challenge-456",
+      signature: signed.signature,
+      publicKey: keys.publicKey,
+    });
+
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject a modified nonce", () => {
+    const keys = generateKeyPair();
+
+    const request = {
+      method: "POST",
+      path: "/api/withdrawals",
+      body: "{}",
+      challengeId: "challenge-123",
+      nonce: "nonce-123",
+      representation: "naviaaccess123",
+    };
+
+    const signed = signRequest({
+      ...request,
+      privateKey: keys.privateKey,
+    });
+
+    const result = verifyRequest({
+      ...request,
+      nonce: "nonce-456",
+      signature: signed.signature,
+      publicKey: keys.publicKey,
+    });
+
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject a modified representation", () => {
+    const keys = generateKeyPair();
+
+    const request = {
+      method: "POST",
+      path: "/api/withdrawals",
+      body: "{}",
+      challengeId: "challenge-123",
+      nonce: "nonce-123",
+      representation: "naviaaccess123",
+    };
+
+    const signed = signRequest({
+      ...request,
+      privateKey: keys.privateKey,
+    });
+
+    const result = verifyRequest({
+      ...request,
+      representation: "modified-representation",
+      signature: signed.signature,
+      publicKey: keys.publicKey,
+    });
+
+    expect(result.valid).toBe(false);
+  });
 });

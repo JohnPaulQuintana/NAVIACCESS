@@ -1,6 +1,7 @@
+
 export interface ClientKeyPair {
   publicKey: string;
-  privateKey: string;
+  privateKey: CryptoKey;
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -28,16 +29,17 @@ export async function generateClientKeyPair(): Promise<ClientKeyPair> {
     {
       name: "Ed25519",
     },
-    true,
+    false,
     ["sign", "verify"],
   );
 
-  const publicKey = await crypto.subtle.exportKey("spki", keyPair.publicKey);
-
-  const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+  const publicKey = await crypto.subtle.exportKey(
+    "spki",
+    keyPair.publicKey,
+  );
 
   return {
     publicKey: toPem("PUBLIC KEY", publicKey),
-    privateKey: toPem("PRIVATE KEY", privateKey),
+    privateKey: keyPair.privateKey,
   };
 }

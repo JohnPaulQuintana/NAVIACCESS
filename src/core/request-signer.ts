@@ -1,5 +1,7 @@
 import { sign, createPrivateKey } from "node:crypto";
 
+import { createRequestPayload } from "./request-payload.js";
+
 export interface RequestSignatureOptions {
   method: string;
   path: string;
@@ -16,17 +18,34 @@ export interface SignedRequest {
 }
 
 export function signRequest(options: RequestSignatureOptions): SignedRequest {
-  const { method, path, body, challengeId, nonce, privateKey, representation } = options;
+  const {
+    method,
+    path,
+    body,
+    challengeId,
+    nonce,
+    privateKey,
+    representation,
+  } = options;
 
-  if (!method.trim() || !path.trim() || !challengeId.trim() || !nonce.trim() || !representation.trim()) {
+  if (
+    !method.trim() ||
+    !path.trim() ||
+    !challengeId.trim() ||
+    !nonce.trim() ||
+    !representation.trim()
+  ) {
     throw new Error("Missing required request-signing fields.");
   }
 
-  const normalizedMethod = method.toUpperCase();
-
-  const signedPayload = [normalizedMethod, path, body, challengeId, nonce, representation].join(
-    "\n",
-  );
+  const signedPayload = createRequestPayload({
+    method,
+    path,
+    body,
+    challengeId,
+    nonce,
+    representation,
+  });
 
   const key = createPrivateKey(privateKey);
 

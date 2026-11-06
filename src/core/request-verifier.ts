@@ -1,5 +1,7 @@
 import { createPublicKey, verify } from "node:crypto";
 
+import { createRequestPayload } from "./request-payload.js";
+
 export interface RequestVerificationOptions {
   method: string;
   path: string;
@@ -19,8 +21,16 @@ export interface RequestVerificationResult {
 export function verifyRequest(
   options: RequestVerificationOptions,
 ): RequestVerificationResult {
-  const { method, path, body, challengeId, nonce, signature, representation, publicKey } =
-    options;
+  const {
+    method,
+    path,
+    body,
+    challengeId,
+    nonce,
+    signature,
+    representation,
+    publicKey,
+  } = options;
 
   if (
     !method.trim() ||
@@ -38,14 +48,14 @@ export function verifyRequest(
   }
 
   try {
-    const signedPayload = [
-      method.toUpperCase(),
+    const signedPayload = createRequestPayload({
+      method,
       path,
       body,
       challengeId,
       nonce,
-      representation
-    ].join("\n");
+      representation,
+    });
 
     const key = createPublicKey(publicKey);
 

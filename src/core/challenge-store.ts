@@ -1,28 +1,39 @@
 import type { GeneratedChallenge } from "./challenge.js";
 
+export type ChallengeConsumeResult =
+  | "valid"
+  | "not_found"
+  | "expired"
+  | "already_used"
+  | "nonce_mismatch";
+
+/**
+ * Shared contract for NaviAccess challenge storage providers.
+ */
+export interface ChallengeStore {
+  save(challenge: GeneratedChallenge): void | Promise<void>;
+
+  get(
+    id: string,
+  ): GeneratedChallenge | undefined | Promise<GeneratedChallenge | undefined>;
+
+  consume(
+    id: string,
+    expectedNonce: string,
+  ): ChallengeConsumeResult | Promise<ChallengeConsumeResult>;
+}
+
 interface StoredChallenge {
   challenge: GeneratedChallenge;
   consumed: boolean;
 }
 
-export type ChallengeConsumeResult =
-  | "valid"
-  | "not_found"
-  | "expired"
-  | "already_used";
-
 /**
  * Temporary in-memory challenge storage.
- *
- * Each challenge can only be consumed once
- * within this Node.js process.
  */
-export class InMemoryChallengeStore {
+export class InMemoryChallengeStore implements ChallengeStore {
   private readonly challenges = new Map<string, StoredChallenge>();
 
-  /**
-   * Save a generated challenge.
-   */
   save(challenge: GeneratedChallenge): void {
     if (this.challenges.has(challenge.id)) {
       throw new Error("Challenge already exists.");
@@ -34,41 +45,32 @@ export class InMemoryChallengeStore {
     });
   }
 
-  /**
-   * Retrieve a challenge without consuming it.
-   */
   get(id: string): GeneratedChallenge | undefined {
     return this.challenges.get(id)?.challenge;
   }
 
-  /**
-   * Validate and consume a challenge.
-   */
-  consume(id: string): ChallengeConsumeResult {
+  consume(
+    id: string,
+    expectedNonce: string,
+  ): ChallengeConsumeResult {
     const stored = this.challenges.get(id);
 
-    if (!stored) {
-      return "not_found";
-    }
+    if (!stored) return "not_found";
+    if (stored.consumed) return "already_used";
 
-    if (stored.consumed) {
-      return "already_used";
+    if (stored.challenge.nonce !== expectedNonce) {
+      return "nonce_mismatch";
     }
 
     if (Date.now() >= stored.challenge.expiresAt) {
       return "expired";
     }
 
-    // Synchronous operation prevents duplicate consumption
-    // within this Node.js process.
     stored.consumed = true;
 
     return "valid";
   }
 
-  /**
-   * Remove expired or consumed challenges.
-   */
   cleanup(): number {
     let removed = 0;
     const now = Date.now();
@@ -83,9 +85,6 @@ export class InMemoryChallengeStore {
     return removed;
   }
 
-  /**
-   * Return the number of stored challenges.
-   */
   get size(): number {
     return this.challenges.size;
   }

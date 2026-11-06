@@ -3,7 +3,7 @@ import { signClientRequest } from "./request-signer.js";
 
 export interface NaviAccessClientOptions {
   keyword: string;
-  privateKey: string;
+  privateKey: CryptoKey;
 }
 
 export interface NaviAccessSignOptions {
@@ -33,8 +33,17 @@ export function createNaviAccessClient(
 ): NaviAccessClient {
   const { keyword, privateKey } = options;
 
-  if (!keyword.trim() || !privateKey.trim()) {
+  if (!keyword.trim()) {
     throw new Error("NaviAccess client configuration is incomplete.");
+  }
+
+  if (
+    !(privateKey instanceof CryptoKey) ||
+    privateKey.type !== "private" ||
+    privateKey.algorithm.name !== "Ed25519" ||
+    !privateKey.usages.includes("sign")
+  ) {
+    throw new Error("Invalid Ed25519 private key.");
   }
 
   return {

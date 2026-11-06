@@ -1,3 +1,5 @@
+import { createRequestPayload } from "../core/request-payload.js";
+
 export interface ClientSignatureOptions {
   method: string;
   path: string;
@@ -5,27 +7,12 @@ export interface ClientSignatureOptions {
   challengeId: string;
   nonce: string;
   representation: string;
-  privateKey: string;
+  privateKey: CryptoKey;
 }
 
 export interface ClientSignedRequest {
   signature: string;
   signedPayload: string;
-}
-
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const base64 = pem
-    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
-    .replace(/-----END PRIVATE KEY-----/g, "")
-    .replace(/\s/g, "");
-
-  const binary = atob(base64);
-  const bytes = Uint8Array.from(
-    binary,
-    (character) => character.charCodeAt(0),
-  );
-
-  return bytes.buffer;
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -58,32 +45,32 @@ export async function signClientRequest(
     !path.trim() ||
     !challengeId.trim() ||
     !nonce.trim() ||
-    !representation.trim() ||
-    !privateKey.trim()
+    !representation.trim()
   ) {
     throw new Error("Missing required request-signing fields.");
   }
 
-  const signedPayload = [
-    method.toUpperCase(),
+  if (
+    !(privateKey instanceof CryptoKey) ||
+    privateKey.type !== "private" ||
+    privateKey.algorithm.name !== "Ed25519" ||
+    !privateKey.usages.includes("sign")
+  ) {
+    throw new Error("Invalid Ed25519 private key.");
+  }
+
+  const signedPayload = createRequestPayload({
+    method,
     path,
     body,
     challengeId,
     nonce,
     representation,
-  ].join("\n");
-
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pemToArrayBuffer(privateKey),
-    { name: "Ed25519" },
-    false,
-    ["sign"],
-  );
+  });
 
   const signature = await crypto.subtle.sign(
     "Ed25519",
-    key,
+    privateKey,
     new TextEncoder().encode(signedPayload),
   );
 

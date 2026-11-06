@@ -1,15 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  generateKeyPair,
-  verifyRequest,
-} from "../src/index.js";
-
+import { verifyRequest } from "../src/index.js";
+import { generateClientKeyPair } from "../src/client/key-generator.js";
 import { signClientRequest } from "../src/client/request-signer.js";
 
 describe("NaviAccess Client Request Signer", () => {
   it("should generate a signature accepted by the backend verifier", async () => {
-    const keys = generateKeyPair();
+    const keys = await generateClientKeyPair();
 
     const request = {
       method: "POST",
@@ -35,7 +32,7 @@ describe("NaviAccess Client Request Signer", () => {
   });
 
   it("should reject a modified request body", async () => {
-    const keys = generateKeyPair();
+    const keys = await generateClientKeyPair();
 
     const request = {
       method: "POST",

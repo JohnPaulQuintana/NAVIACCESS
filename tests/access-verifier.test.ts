@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 
 import {
   generateKeyPair,
@@ -10,7 +10,54 @@ import {
 } from "../src/index.js";
 
 describe("NaviAccess Access Verifier", () => {
-  it("should authorize a valid request", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("should reject an expired challenge", async () => {
+    vi.useFakeTimers();
+
+    const keys = generateKeyPair();
+    const challenge = generateChallenge({
+      expiresInSeconds: 1,
+    });
+    const store = new InMemoryChallengeStore();
+
+    store.save(challenge);
+
+    const generated = generateRepresentation({
+      keyword: "naviaccess",
+    });
+
+    const request = {
+      method: "POST",
+      path: "/api/withdrawals",
+      body: "{}",
+      challengeId: challenge.id,
+      nonce: challenge.nonce,
+      representation: generated.value,
+    };
+
+    const signed = signRequest({
+      ...request,
+      privateKey: keys.privateKey,
+    });
+
+    vi.advanceTimersByTime(1000);
+
+    const result = await verifyAccess({
+      ...request,
+      signature: signed.signature,
+      publicKey: keys.publicKey,
+      keyword: "naviaccess",
+      challengeStore: store,
+    });
+
+    expect(result.authorized).toBe(false);
+    expect(result.reason).toBe("Challenge expired.");
+  });
+
+  it("should authorize a valid request", async () => {
     const keys = generateKeyPair();
     const challenge = generateChallenge();
     const store = new InMemoryChallengeStore();
@@ -35,7 +82,7 @@ describe("NaviAccess Access Verifier", () => {
       privateKey: keys.privateKey,
     });
 
-    const result = verifyAccess({
+    const result = await verifyAccess({
       ...request,
       signature: signed.signature,
       publicKey: keys.publicKey,
@@ -46,7 +93,7 @@ describe("NaviAccess Access Verifier", () => {
     expect(result.authorized).toBe(true);
   });
 
-  it("should reject a reused challenge", () => {
+  it("should reject a reused challenge", async () => {
     const keys = generateKeyPair();
     const challenge = generateChallenge();
     const store = new InMemoryChallengeStore();
@@ -79,11 +126,14 @@ describe("NaviAccess Access Verifier", () => {
       challengeStore: store,
     };
 
-    expect(verifyAccess(options).authorized).toBe(true);
-    expect(verifyAccess(options).authorized).toBe(false);
+    const firstResult = await verifyAccess(options);
+    const secondResult = await verifyAccess(options);
+
+    expect(firstResult.authorized).toBe(true);
+    expect(secondResult.authorized).toBe(false);
   });
 
-  it("should reject an incorrect challenge nonce", () => {
+  it("should reject an incorrect challenge nonce", async () => {
     const keys = generateKeyPair();
     const challenge = generateChallenge();
     const store = new InMemoryChallengeStore();
@@ -108,7 +158,7 @@ describe("NaviAccess Access Verifier", () => {
       privateKey: keys.privateKey,
     });
 
-    const result = verifyAccess({
+    const result = await verifyAccess({
       ...request,
       signature: signed.signature,
       publicKey: keys.publicKey,
@@ -117,10 +167,10 @@ describe("NaviAccess Access Verifier", () => {
     });
 
     expect(result.authorized).toBe(false);
-    expect(store.consume(challenge.id)).toBe("valid");
+    expect(store.consume(challenge.id, challenge.nonce)).toBe("valid");
   });
 
-  it("should not consume a challenge when the signature is invalid", () => {
+  it("should not consume a challenge when the signature is invalid", async () => {
     const keys = generateKeyPair();
     const challenge = generateChallenge();
     const store = new InMemoryChallengeStore();
@@ -131,7 +181,7 @@ describe("NaviAccess Access Verifier", () => {
       keyword: "naviaccess",
     });
 
-    const result = verifyAccess({
+    const result = await verifyAccess({
       method: "POST",
       path: "/api/withdrawals",
       body: "{}",
@@ -145,6 +195,6 @@ describe("NaviAccess Access Verifier", () => {
     });
 
     expect(result.authorized).toBe(false);
-    expect(store.consume(challenge.id)).toBe("valid");
+    expect(store.consume(challenge.id, challenge.nonce)).toBe("valid");
   });
 });

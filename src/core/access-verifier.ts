@@ -1,4 +1,4 @@
-import type { InMemoryChallengeStore } from "./challenge-store.js";
+import type { ChallengeStore } from "./challenge-store.js";
 
 import { validateRepresentation } from "./validator.js";
 import { verifyRequest } from "./request-verifier.js";
@@ -13,7 +13,7 @@ export interface AccessVerificationOptions {
   signature: string;
   publicKey: string;
   keyword: string;
-  challengeStore: InMemoryChallengeStore;
+  challengeStore: ChallengeStore;
 }
 
 export interface AccessVerificationResult {
@@ -21,9 +21,9 @@ export interface AccessVerificationResult {
   reason: string;
 }
 
-export function verifyAccess(
+export async function verifyAccess(
   options: AccessVerificationOptions,
-): AccessVerificationResult {
+): Promise<AccessVerificationResult> {
   const {
     method,
     path,
@@ -69,30 +69,23 @@ export function verifyAccess(
     };
   }
 
-  // Step 3: Check that the challenge matches.
-  const challenge = challengeStore.get(challengeId);
-
-  if (!challenge) {
-    return {
-      authorized: false,
-      reason: "Challenge not found.",
-    };
-  }
-
-  if (challenge.nonce !== nonce) {
-    return {
-      authorized: false,
-      reason: "Challenge nonce does not match.",
-    };
-  }
-
-  // Step 4: Consume the challenge exactly once.
-  const consumeResult = challengeStore.consume(challengeId);
+  // Step 3: Atomically validate and consume the challenge.
+  const consumeResult = await challengeStore.consume(
+    challengeId,
+    nonce,
+  );
 
   if (consumeResult !== "valid") {
+    const reasons = {
+      not_found: "Challenge not found.",
+      expired: "Challenge expired.",
+      already_used: "Challenge already used.",
+      nonce_mismatch: "Challenge nonce does not match.",
+    } as const;
+
     return {
       authorized: false,
-      reason: `Challenge ${consumeResult}.`,
+      reason: reasons[consumeResult],
     };
   }
 

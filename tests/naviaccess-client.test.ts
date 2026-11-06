@@ -35,24 +35,41 @@ describe("NaviAccess Client", () => {
     });
 
     expect(verification.valid).toBe(true);
-    
-    expect(signed.headers["X-NaviAccess-Challenge"]).toBe(request.challenge.id);
 
-    expect(signed.headers["X-NaviAccess-Nonce"]).toBe(request.challenge.nonce);
+    expect(signed.headers["X-NaviAccess-Challenge"]).toBe(
+      request.challenge.id,
+    );
+
+    expect(signed.headers["X-NaviAccess-Nonce"]).toBe(
+      request.challenge.nonce,
+    );
 
     expect(signed.headers["X-NaviAccess-Representation"]).toBe(
       signed.representation,
     );
 
-    expect(signed.headers["X-NaviAccess-Signature"]).toBe(signed.signature);
+    expect(signed.headers["X-NaviAccess-Signature"]).toBe(
+      signed.signature,
+    );
   });
 
-  it("should reject incomplete client configuration", () => {
+  it("should reject incomplete client configuration", async () => {
+    const keys = await generateClientKeyPair();
+
     expect(() =>
       createNaviAccessClient({
         keyword: "",
-        privateKey: "",
+        privateKey: keys.privateKey,
       }),
     ).toThrow("NaviAccess client configuration is incomplete.");
+  });
+
+  it("should reject an invalid private key", () => {
+    expect(() =>
+      createNaviAccessClient({
+        keyword: "naviaccess",
+        privateKey: {} as CryptoKey,
+      }),
+    ).toThrow("Invalid Ed25519 private key.");
   });
 });

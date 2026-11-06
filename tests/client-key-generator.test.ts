@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  generateClientKeyPair,
-} from "../src/client/key-generator.js";
-
+import { generateClientKeyPair } from "../src/client/key-generator.js";
 import { signClientRequest } from "../src/client/request-signer.js";
 import { verifyRequest } from "../src/index.js";
 
 describe("NaviAccess Client Key Generator", () => {
-  it("should generate a valid Ed25519 key pair", async () => {
+  it("should generate a non-extractable Ed25519 private key", async () => {
     const keys = await generateClientKeyPair();
 
     expect(keys.publicKey).toContain("-----BEGIN PUBLIC KEY-----");
-    expect(keys.privateKey).toContain("-----BEGIN PRIVATE KEY-----");
+
+    expect(keys.privateKey).toBeInstanceOf(CryptoKey);
+    expect(keys.privateKey.type).toBe("private");
+    expect(keys.privateKey.algorithm.name).toBe("Ed25519");
+    expect(keys.privateKey.extractable).toBe(false);
+    expect(keys.privateKey.usages).toContain("sign");
   });
 
   it("should generate keys accepted by the backend verifier", async () => {
