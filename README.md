@@ -183,4 +183,5 @@ MIT
 
 ## Documentation
 
+- [Developer Usage Guide](docs/USAGE.md)
 - [Integration Validation and Security Documentation](docs/VALIDATION.md)
